@@ -1,32 +1,92 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Baztami</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Transactions - Demo</title>
+
+  <!-- Bootstrap CSS for quick styling (no Bootstrap JS used) -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Font Awesome for icons (optional) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css">
+
+  <style>
+    /* ---------- Modal core styles (custom, no Bootstrap JS) ---------- */
+    .modal-custom {
+      display: none;               /* hidden by default */
+      position: fixed;
+      inset: 0;                    /* top:0; right:0; bottom:0; left:0 */
+      background: rgba(0,0,0,0.45);
+      justify-content: center;
+      align-items: center;
+      z-index: 1050;
+    }
+    .modal-custom.show {
+      display: flex;
+      animation: fadeIn .12s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+
+    .modal-box {
+      width: 420px;
+      max-width: calc(100% - 32px);
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+      overflow: hidden;
+    }
+
+    .modal-body { padding: 16px; }
+    .modal-header { padding: 12px 16px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #eee; }
+    .close-btn {
+      background: none;
+      border: 0;
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    /* ---------- Small/compact card styling adjustments ---------- */
+    .txn-card .card-body {
+      padding: 10px;
+      gap: 6px;
+    }
+    .txn-card h6 { margin:0; font-size:0.85rem; color: rgba(255,255,255,0.95);}
+    .txn-card p { margin:0; font-size:0.95rem; color: rgba(255,255,255,0.95); }
+
+    /* make cards compact & same height */
+    .txn-card { width: 18rem; }
+    .txn-card .card-body { display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:nowrap; }
+
+    /* small icon + text blocks inside card */
+    .txn-block { text-align:center; min-width: 4.2rem; }
+
+    /* mobile responsiveness */
+    @media (max-width: 576px) {
+      .txn-card { width: 100%; }
+      .modal-box { width: 92%; }
+    }
+  </style>
 </head>
+<body class="bg-light p-4">
 
+  <!-- Open button (you said you manage JS yourself) -->
+  <button id="openModal" class="btn btn-primary rounded-circle position-fixed top-0 end-0 m-4 p-2" aria-label="Add">
+    <i class="fa-solid fa-plus fa-2x"></i>
+  </button>
 
-
-
-
-
-<body class="bg-light">
-      <!-- Add Transaction Modal -->
-<div class="modal fade" id="addTransactionModal">
-  <div class="modal-dialog">
-    <div class="modal-content">
+  <!-- Modal (custom) -->
+  <div id="myModal" class="modal-custom" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal-box" role="document">
 
       <div class="modal-header">
         <h5 class="modal-title">Add Transaction</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button id="closeModal" class="close-btn" aria-label="Close">&times;</button>
       </div>
 
       <div class="modal-body">
-        <form id="transactionForm">
-
+        <form id="transactionForm" novalidate>
           <div class="mb-3">
             <label class="form-label">Description</label>
             <input type="text" id="description-input" class="form-control" required>
@@ -41,7 +101,7 @@
             <label class="form-label">Type</label>
             <select id="type-input" class="form-select" required>
               <option value="income">Income</option>
-              <option value="expense">Expense</option>
+              <option value="expense" selected>Expense</option>
             </select>
           </div>
 
@@ -50,212 +110,154 @@
             <input type="date" id="date-input" class="form-control" required>
           </div>
 
+          <div class="d-flex justify-content-end">
+            <button type="button" id="cancelBtn" class="btn btn-secondary me-2">Cancel</button>
+            <button type="submit" class="btn btn-primary">Add</button>
+          </div>
         </form>
       </div>
 
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button class="btn btn-primary" form="transactionForm">Add</button>
-      </div>
-
     </div>
   </div>
-</div>
-  <!-- Header Section -->
-  <header>
-    <div class="container">
-    <div class="d-flex align-items-center gap-2 mt-5">
-      <img src="images/logo.png" width="70px" height="70px">
-      <h1>Baztami</h1>
-    </div>
-    </div>
-  </header>
 
-  <!-- Stats Section -->
-  <section class="stats">
-    <div class="d-flex justify-content-center align-items-center mb-3 mt-3 gap-3">
-      <h1 class="text-dark">Dashbord</h1>
-      <i class="fas fa-tachometer-alt fa-2x"></i>
-    </div>
-    <div class="container bg-light p-4 rounded">
-      <div class="row">
-        <div class="col-12 col-md-4 mb-3">
-          <div class="card bg-info text-white">
-            <div class="card-body">
-              <div class="d-flex justify-content-center align-items-center gap-3">
-              <h2 class="text-center fa-2x">Balance</h2>
-              <i class="fa-solid fa-wallet"></i>
-              </div>
-              <h3 class="text-center" id="balance-amount">$0.00</h3>
-            </div>
+  <!-- Container where transactions will be appended -->
+  <h4 class="mb-3">Recent Transactions</h4>
+  <div id="transactionlist" class="d-flex flex-wrap gap-3 justify-content-start"></div>
+
+  <!-- Optional: Bootstrap CSS already included above; no Bootstrap JS used -->
+
+  <!-- Your custom JS (placed at bottom) -->
+  <script>
+    // ---------- Element references (make sure IDs match the HTML) ----------
+    const modal = document.getElementById("myModal");
+    const openBtn = document.getElementById("openModal");
+    const closeBtn = document.getElementById("closeModal");
+    const cancelBtn = document.getElementById("cancelBtn");
+
+    const form = document.getElementById("transactionForm");
+    const descriptionInput = document.getElementById("description-input");
+    const amountInput = document.getElementById("amount-input");
+    const typeInput = document.getElementById("type-input");
+    const dateInput = document.getElementById("date-input");
+    const container = document.getElementById("transactionlist");
+
+    // ---------- Helpers to open/close the modal ----------
+    function showModal() {
+      modal.classList.add("show");
+      modal.setAttribute("aria-hidden","false");
+      // focus first input for usability
+      descriptionInput.focus();
+    }
+    function hideModal() {
+      modal.classList.remove("show");
+      modal.setAttribute("aria-hidden","true");
+    }
+
+    // ---------- Wire buttons ----------
+    openBtn.addEventListener("click", () => {
+      console.log("Open button clicked");
+      showModal();
+    });
+    closeBtn.addEventListener("click", () => {
+      hideModal();
+    });
+    cancelBtn.addEventListener("click", () => {
+      hideModal();
+    });
+
+    // Click outside the modal-box closes it
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) hideModal();
+    });
+
+    // Escape key closes modal
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && modal.classList.contains("show")) hideModal();
+    });
+
+    // ---------- Function that creates and appends a transaction card ----------
+    function addTransactionCard(newtransaction) {
+      // decide background color based on type
+      const bgClass = newtransaction.type === "income" ? "bg-success" : "bg-danger";
+
+      // create outer card wrapper
+      const card = document.createElement("div");
+      card.className = "card txn-card " + " " + "shadow-sm " ;
+
+      // set inner HTML using compact horizontal layout so height is small
+      card.innerHTML = `
+        <div class="card-body ${bgClass} text-white d-flex align-items-center justify-content-between">
+          <div class="txn-block">
+            <h6 class="mb-1">Details</h6>
+            <p class="m-0">${escapeHtml(newtransaction.description)}</p>
+          </div>
+
+          <div class="txn-block">
+            <h6 class="mb-1">Amount</h6>
+            <p class="m-0">${newtransaction.amount < 0 ? "-" : ""}$${Math.abs(newtransaction.amount).toFixed(2)}</p>
+          </div>
+
+          <div class="txn-block">
+            <h6 class="mb-1">Date</h6>
+            <p class="m-0">${escapeHtml(newtransaction.date)}</p>
           </div>
         </div>
+      `;
 
-        <div class="col-12 col-md-4 mb-3">
-          <div class="card bg-success text-white">
-            <div class="card-body">
-              <div class="d-flex justify-content-center align-items-center gap-3">
-              <h2 class="text-center">Income</h2>
-              <i class="fa-solid fa-money-bill-trend-up"></i>
-              </div>
-              <h3 class="text-center" id="income-amount">$0.00</h3>
-            </div>
-          </div>
-        </div>
+      container.appendChild(card);
+    }
 
-        <div class="col-12 col-md-4 mb-3">
-          <div class="card bg-danger text-white">
-            <div class="card-body">
-              <div class="d-flex justify-content-center align-items-center gap-3">
-              <h2 class="text-center">Expenses</h2>
-              <i class="fa-solid fa-arrow-trend-down"></i>
-              </div>
-              <h3 class="text-center" id="expenses-amount">$0.00</h3>
-            </div>
-          </div>
-        </div>
+    // small helper to avoid accidental HTML injection
+    function escapeHtml(str) {
+      if (!str) return "";
+      return String(str)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'", "&#039;");
+    }
 
-      </div>
-    </div>
-  </section>
+    // ---------- Form submit handler ----------
+    form.addEventListener("submit", function (event) {
+      event.preventDefault(); // stop page reload
 
-  <!-- Recent Transactions Section -->
-  <section class="transactions">
-    <div class="container">
+      // validate inputs quickly
+      const desc = descriptionInput.value.trim();
+      const amtRaw = amountInput.value;
+      const date = dateInput.value;
+      const type = typeInput.value;
 
-      <div class="row align-items-center p-3">
-        <div class="col-12 col-md-6 mb-3">
-          <h4>
-  Recent Transactions
-  <a data-bs-toggle="collapse" href="#disclaimer" role="button" aria-expanded="false" aria-controls="disclaimer">
-    <i class="fa-solid fa-circle-info"></i>
-  </a>
-</h4>
-<div class="collapse" id="disclaimer">
-  <div class="text-muted">
-    Only the latest 5 transactions are shown. Click 'View All' to see more.
-  </div>
-</div>
+      if (!desc || !amtRaw || !date) {
+        alert("Please fill all fields.");
+        return;
+      }
 
-        </div>
-      </div>
+      const amt = parseFloat(amtRaw);
+      if (Number.isNaN(amt)) {
+        alert("Amount must be a number.");
+        return;
+      }
 
-      <!-- Transaction Cards -->
-    <div id="transaction-list">
-      <div class="card mb-3">
-        <div class="card-body d-flex flex-column flex-md-row justify-content-between gap-5 p-3 border rounded bg-success">
-          <div>
-            <div class="d-flex align-items-center gap-2 ">
-            <h3 class="text-white">Num</h3>
-            <i class="fa-solid fa-hashtag text-white"></i>
-            </div>
-            <p>0001</p>
-          </div>
-          <div>
-            <div class="d-flex align-items-center gap-2">
-            <h3 class="text-white">Details</h3>
-            <i class="fa-solid fa-file-lines text-white"></i>
-            </div> 
-            <p>Salary paiement</p>
-          </div>
-          <div>
-            <div class="d-flex align-items-center gap-2">
-            <h3 class="text-white">Amount</h3>
-            <i class="fa-solid fa-dollar-sign text-white"></i>
-            </div>
-            <p>$3000.00</p>
-          </div>
-          <div>
-            <div class="d-flex align-items-center gap-2">
-            <h3 class="text-white">Date</h3>
-            <i class="fa-solid fa-calendar-day text-white"></i>
-            </div>
-            <p>2024-06-18</p>
-          </div>
-        </div>
-      </div>
+      const newTransaction = {
+        description: desc,
+        amount: amt,
+        type: type,
+        date: date
+      };
 
-      <div class="card mb-3">
-        <div class="card-body d-flex flex-column flex-md-row justify-content-between gap-5 p-3 border rounded bg-danger">
-          <div>
-            <div class="d-flex align-items-center gap-2">
-            <h3 class="text-white">Num</h3>
-            <i class="fa-solid fa-hashtag text-white"></i>
-            </div>
-            <p>0002</p>
-          </div>
-          <div>
-            <div class="d-flex align-items-center gap-2">
-            <h3 class="text-white">Details</h3>
-            <i class="fa-solid fa-file-lines text-white"></i>
-            </div> 
-            <p>Wi-Fi subscription</p>
-          </div>
-          <div>
-            <div class="d-flex align-items-center gap-2">
-            <h3 class="text-white">Amount</h3>
-            <i class="fa-solid fa-dollar-sign text-white"></i>
-            </div>
-            <p>$100.00</p>
-          </div>
-          <div>
-            <div class="d-flex align-items-center gap-2">
-            <h3 class="text-white">Date</h3>
-            <i class="fa-solid fa-calendar-day text-white"></i>
-            </div>
-            <p>2024-06-18</p>
-          </div>
-        </div>
-      </div>
+      console.log("New transaction object:", newTransaction);
 
-      <div class="card mb-3">
-        <div class="card-body d-flex flex-column flex-md-row justify-content-between gap-5 p-3 border rounded bg-danger">
-          <div>
-            <div class="d-flex align-items-center gap-2">
-            <h3 class="text-white">Num</h3>
-            <i class="fa-solid fa-hashtag text-white"></i>
-            </div>
-            <p>0003</p>
-          </div>
-          <div>
-            <div class="d-flex align-items-center gap-2">
-            <h3 class="text-white">Details</h3>
-            <i class="fa-solid fa-file-lines text-white"></i>
-            </div> 
-            <p>Grocery</p>
-          </div>
-          <div>
-            <div class="d-flex align-items-center gap-2">
-            <h3 class="text-white">Amount</h3>
-            <i class="fa-solid fa-dollar-sign text-white"></i>
-            </div>
-            <p>$85.00</p>
-          </div>
-          <div>
-            <div class="d-flex align-items-center gap-2">
-            <h3 class="text-white">Date</h3>
-            <i class="fa-solid fa-calendar-day text-white"></i>
-            </div>
-            <p>2024-06-18</p>
-          </div>
-        </div>
-      </div>
-      </div>
- </div>
-  </section>
+      // create card and append
+      addTransactionCard(newTransaction);
 
+      // reset + close
+      form.reset();
+      hideModal();
+    });
 
-  
-   <!--ADD TRANSACTION Button-->
-  <button class="btn btn-primary rounded-circle position-fixed bottom-0 end-0 m-4 p-2"
-        data-bs-toggle="modal" data-bs-target="#addTransactionModal">
-  <i class="fa-solid fa-plus fa-2x"></i>
-  </button>
-
-
-
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="script.js"></script>
+    // ---------- Debug tip: show console message when page is ready ----------
+    console.log("Page ready — custom modal script loaded.");
+  </script>
 </body>
 </html>
