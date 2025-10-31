@@ -1,79 +1,150 @@
-const form = document.getElementById("transaction-form");
-const nameInput = document.getElementById("name");
-const amountInput = document.getElementById("amount");
-const list = document.getElementById("transaction-list");
+const pagecontent = document.getElementById("pagecontent");
+const modal = document.getElementById("myModal");
+const openBtn = document.getElementById("openModal");
+const closeBtn = document.getElementById("closeModal");
+const cancelBtn = document.querySelector("#myModal .btn-secondary");
+const form = document.getElementById("transactionForm");
 
-let transactions = JSON.parse(localStorage.getItem("transactions")) || [];
+const descriptionInput = document.getElementById("descriptionInput");
+const amountInput = document.getElementById("amountInput");
+const typeInput = document.getElementById("typeInput");
 
-// ----- RENDER CARDS -----
-function renderTransactions() {
-    list.innerHTML = "";
+const transactionList = document.getElementById("transactionlist");
+const balanceEl = document.getElementById("balance-amount");
+const incomeEl = document.getElementById("income-amount");
+const expensesEl = document.getElementById("expenses-amount");
 
-    transactions.forEach((transaction, index) => {
-        if (!transaction.hidden) { // only show if not deleted
-            const card = document.createElement("div");
-            card.className = "transaction-card";
+let transactions = [];
+let editingIndex = -1;
 
-            card.innerHTML = `
-                <p><strong>ID:</strong> ${index + 1}</p>
-                <p><strong>Name:</strong> ${transaction.name}</p>
-                <p><strong>Amount:</strong> ${transaction.amount} MAD</p>
-            `;
-
-            const modifyBtn = document.createElement("button");
-            modifyBtn.textContent = "Modify";
-
-            const deleteBtn = document.createElement("button");
-            deleteBtn.textContent = "Delete";
-
-            // ----- MODIFY -----
-            modifyBtn.addEventListener("click", () => {
-                const newName = prompt("Enter new name:", transaction.name);
-                const newAmount = prompt("Enter new amount:", transaction.amount);
-
-                if (newName !== null && newAmount !== null) {
-                    transaction.name = newName;
-                    transaction.amount = newAmount;
-                    localStorage.setItem("transactions", JSON.stringify(transactions));
-                    renderTransactions();
-                }
-            });
-
-            // ----- DELETE WITH CONFIRM -----
-            deleteBtn.addEventListener("click", () => {
-                const confirmDelete = confirm("Are you sure you want to delete this transaction?");
-                if (confirmDelete) {
-                    transaction.hidden = true; // hide instead of deleting
-                    localStorage.setItem("transactions", JSON.stringify(transactions));
-                    renderTransactions(); // refresh
-                }
-            });
-
-            card.appendChild(modifyBtn);
-            card.appendChild(deleteBtn);
-            list.appendChild(card);
-        }
-    });
+// Load
+if(localStorage.getItem("transactions")){
+  transactions = JSON.parse(localStorage.getItem("transactions"));
+  renderTransactions();
 }
 
-// ----- ADD NEW TRANSACTION -----
-form.addEventListener("submit", (e) => {
-    e.preventDefault();
+// Save
+function saveTransactions(){
+  localStorage.setItem("transactions", JSON.stringify(transactions));
+}
 
-    const newTransaction = {
-        name: nameInput.value,
-        amount: amountInput.value,
-        hidden: false
-    };
-
-    transactions.push(newTransaction);
-    localStorage.setItem("transactions", JSON.stringify(transactions));
-
-    nameInput.value = "";
-    amountInput.value = "";
-
-    renderTransactions();
+// Open modal
+openBtn.addEventListener("click", () => {
+  editingIndex = -1;
+  modal.style.display = "flex";
+  pagecontent.classList.add("blur");
 });
 
-renderTransactions();
+// Close modal
+function closeModal(){
+  modal.style.display = "none";
+  pagecontent.classList.remove("blur");
+  form.reset();
+}
+closeBtn.addEventListener("click", closeModal);
+cancelBtn.addEventListener("click", closeModal);
 
+// Add transaction
+form.addEventListener("submit", e => {
+  e.preventDefault();
+
+  if(editingIndex >= 0){
+    const oldId = transactions[editingIndex].id;
+
+    transactions[editingIndex] = {
+      id: oldId,
+      description: descriptionInput.value,
+      amount: parseFloat(amountInput.value),
+      type: typeInput.value,
+      deleted: false
+    };
+
+  } else {
+    transactions.push({
+      id: transactions.length + 1,   // ✅ ID = index + 1 FOREVER
+      description: descriptionInput.value,
+      amount: parseFloat(amountInput.value),
+      type: typeInput.value,
+      deleted: false
+    });
+  }
+
+  saveTransactions();
+  renderTransactions();
+  closeModal();
+});
+
+// Render all
+function renderTransactions(){
+  transactionList.innerHTML = "";
+  transactions.forEach(tx => {
+    if(!tx.deleted){
+      addCard(tx);
+    }
+  });
+  recalcStats();
+}
+
+function addCard(tx){
+  const card = document.createElement("div");
+  card.classList.add("card", "mb-3", "col-lg-3", "col-md-5", "col-sm-12", "m-2");
+  card.id = `tx-${tx.id}`;
+
+  const bg = tx.type === "income" ? "bg-success" : "bg-danger";
+
+  card.innerHTML = `
+    <div class="card-body border rounded p-3 ${bg}">
+      <h6 class="text-white">ID: ${tx.id}</h6>
+      <p class="text-white">${tx.description}</p>
+      <p class="text-white">$${tx.amount.toFixed(2)}</p>
+
+      <button class="btn btn-light btn-sm" id="modify-${tx.id}">Modify</button>
+      <button class="btn btn-light btn-sm" id="delete-${tx.id}">Delete</button>
+    </div>
+  `;
+
+  transactionList.appendChild(card);
+
+  // Modify
+  document.getElementById(`modify-${tx.id}`).addEventListener("click", () => {
+    editingIndex = tx.id - 1; // since id = index + 1
+    descriptionInput.value = tx.description;
+    amountInput.value = tx.amount;
+    typeInput.value = tx.type;
+    modal.style.display = "flex";
+    pagecontent.classList.add("blur");
+  });
+
+  // Delete (HIDE ONLY)
+ document.getElementById(`delete-${tx.id}`).addEventListener("click", () => {
+  const confirmDelete = confirm("Are you sure you want to delete this transaction?");
+
+  if (confirmDelete) {
+    tx.deleted = true;                                      
+    document.getElementById(`tx-${tx.id}`).style.display = "none"; 
+    recalcStats();
+    alert("Transaction deleted successfully!");         
+  }
+});
+
+}
+
+// Stats
+function recalcStats(){
+  let balance = 0, income = 0, expenses = 0;
+
+  transactions.forEach(tx => {
+    if(tx.deleted) return;
+    if(tx.type === "income"){
+      income += tx.amount;
+      balance += tx.amount;
+    } else {
+      expenses += tx.amount;
+      balance -= tx.amount;
+    }
+  });
+
+  balanceEl.textContent = `$${balance.toFixed(2)}`;
+  incomeEl.textContent = `$${income.toFixed(2)}`;
+  expensesEl.textContent = `$${expenses.toFixed(2)}`;
+}
